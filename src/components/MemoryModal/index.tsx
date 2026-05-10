@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { CityLocation } from '@/types'
-import { compressImage } from '@/hooks/useLocationData'
+import { uploadImageToCOS } from '@/hooks/useLocationData'
 
 // 每个城市专属的底部浮动 emoji
 const CITY_EMOJIS: Record<string, string[]> = {
@@ -107,8 +107,8 @@ export default function MemoryModal({ location, onClose, onUpdate }: MemoryModal
 
     setUploading(true)
     try {
-      const compressed = await Promise.all(files.map(f => compressImage(f)))
-      setEditPhotos(prev => [...prev, ...compressed])
+      const urls = await Promise.all(files.map(f => uploadImageToCOS(f)))
+      setEditPhotos(prev => [...prev, ...urls])
     } catch {
       alert('图片处理失败，请重试')
     } finally {

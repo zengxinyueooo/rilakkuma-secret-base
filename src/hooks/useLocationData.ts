@@ -1,9 +1,19 @@
 // 城市数据管理 Hook
-// 照片以 base64 dataURL 形式存储在 IndexedDB（容量远大于 localStorage）
+// 照片上传到腾讯云 COS，IndexedDB 存储图片 URL
 
 import { useState, useCallback, useEffect, useRef } from 'react'
+import COS from 'cos-js-sdk-v5'
 import { locations as staticLocations } from '@/data/locations'
 import type { CityLocation } from '@/types'
+
+// ===== 腾讯云 COS 配置 =====
+const COS_BUCKET = 'tt-1431235163'
+const COS_REGION = 'ap-shanghai'
+
+const cos = new COS({
+  SecretId: 'AKIDGh9cBaq4IXfjdMq67vVqwKYXHyb1FUgj',
+  SecretKey: 'sf6h6WlneMtKXXLwIPK7pQp0582ta2GV',
+})
 
 // ===== IndexedDB 配置 =====
 const DB_NAME = 'rilakkuma-db'
@@ -136,6 +146,40 @@ export async function compressImage(file: File): Promise<string> {
 
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('图片加载失败')) }
     img.src = url
+  })
+}
+
+// ===== 上传图片到腾讯云 COS，返回公开 URL =====
+export async function uploadImageToCOS(file: File): Promise<string> {
+  // 先压缩图片
+  const dataURL = await compressImage(file)
+
+  // base64 转 Blob
+  const arr = dataURL.split(',')
+  const mime = arr[0].match(/:(.*?);/)![1]
+  const bstr = atob(arr[1])
+  const u8arr = new Uint8Array(bstr.length)
+  for (let i = 0; i < bstr.length; i++) u8arr[i] = bstr.charCodeAt(i)
+  const blob = new Blob([u8arr], { type: mime })
+
+  // 生成唯一文件名
+  const ext = mime === 'image/jpeg' ? 'jpg' : 'png'
+  const key = `memories/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+
+  return new Promise((resolve, reject) => {
+    cos.putObject(
+      {
+        Bucket: COS_BUCKET,
+        Region: COS_REGION,
+        Key: key,
+        Body: blob,
+        ContentType: mime,
+      },
+      (err) => {
+        if (err) { reject(err); return }
+        resolve(`https://${COS_BUCKET}.cos.${COS_REGION}.myqcloud.com/${key}`)
+      }
+    )
   })
 }
 

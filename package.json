@@ -12,6 +12,7 @@
   "dependencies": {
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.0",
+    "cos-js-sdk-v5": "^1.10.1",
     "framer-motion": "^11.18.2",
     "lucide-react": "^0.511.0",
     "react": "^19.2.4",
